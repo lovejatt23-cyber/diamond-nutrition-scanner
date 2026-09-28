@@ -1,0 +1,209 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+  <title>Diamond Nutrition Scanner</title>
+
+  <script src="https://unpkg.com/html5-qrcode" type="text/javascript"></script>
+
+  <style>
+    body {
+      margin: 0;
+      padding: 20px;
+      background: #111;
+      color: white;
+      font-family: Arial, sans-serif;
+      text-align: center;
+    }
+
+    h1 {
+      margin-bottom: 5px;
+    }
+
+    p {
+      color: #bbb;
+    }
+
+    #reader {
+      width: 100%;
+      max-width: 500px;
+      margin: 20px auto;
+      background: white;
+      border-radius: 15px;
+      overflow: hidden;
+    }
+
+    button {
+      width: 100%;
+      max-width: 400px;
+      padding: 16px;
+      margin: 10px auto;
+      border: none;
+      border-radius: 12px;
+      font-size: 18px;
+      font-weight: bold;
+    }
+
+    #startBtn {
+      background: #00c853;
+      color: white;
+    }
+
+    #stopBtn {
+      background: #d50000;
+      color: white;
+    }
+
+    #status {
+      margin-top: 15px;
+      padding: 15px;
+      border-radius: 10px;
+      background: #222;
+    }
+  </style>
+</head>
+
+<body>
+
+  <h1>💎 DIAMOND NUTRITION</h1>
+  <p>Mobile Barcode Scanner</p>
+
+  <button id="startBtn" onclick="startScanner()">
+    📷 SCAN BARCODE
+  </button>
+
+  <button id="stopBtn" onclick="stopScanner()">
+    ⛔ STOP SCANNER
+  </button>
+
+  <div id="reader"></div>
+
+  <div id="status">
+    Scanner ready
+  </div>
+
+
+<script>
+
+const POS_URL =
+"https://script.google.com/macros/s/AKfycbzopr46Mgn5Zp4ZPAtO6TDS6mCODKPeyU3Eum9KTF8VhaN4AyOtYskbg65uk9tA_atZNQ/exec";
+
+let scanner = null;
+let scanning = false;
+let alreadyScanned = false;
+
+
+function startScanner() {
+
+  if (scanning) return;
+
+  alreadyScanned = false;
+
+  document.getElementById("status").innerText =
+    "📷 Opening camera...";
+
+  scanner = new Html5Qrcode("reader");
+
+  scanner.start(
+    {
+      facingMode: "environment"
+    },
+    {
+      fps: 10,
+      qrbox: {
+        width: 300,
+        height: 150
+      }
+    },
+
+    function(decodedText) {
+
+      if (alreadyScanned) return;
+
+      alreadyScanned = true;
+
+      document.getElementById("status").innerText =
+        "✅ Barcode: " + decodedText;
+
+      scanner.stop()
+        .then(function() {
+
+          scanning = false;
+
+          // Send barcode back to Diamond Nutrition POS
+          window.location.href =
+            POS_URL +
+            "?barcode=" +
+            encodeURIComponent(decodedText);
+
+        })
+        .catch(function(error) {
+
+          window.location.href =
+            POS_URL +
+            "?barcode=" +
+            encodeURIComponent(decodedText);
+
+        });
+
+    },
+
+    function(errorMessage) {
+      // Normal scanning errors ignored
+    }
+
+  ).then(function() {
+
+    scanning = true;
+
+    document.getElementById("status").innerText =
+      "📷 Camera active — barcode scan karo";
+
+  }).catch(function(error) {
+
+    scanning = false;
+
+    document.getElementById("status").innerText =
+      "❌ Camera Error: " + error;
+
+  });
+
+}
+
+
+function stopScanner() {
+
+  if (!scanner || !scanning) {
+    document.getElementById("status").innerText =
+      "Scanner stopped.";
+    return;
+  }
+
+  scanner.stop()
+    .then(function() {
+
+      scanning = false;
+
+      document.getElementById("status").innerText =
+        "Scanner stopped.";
+
+    })
+    .catch(function(error) {
+
+      console.log(error);
+
+      scanning = false;
+
+      document.getElementById("status").innerText =
+        "Scanner stopped.";
+
+    });
+
+}
+
+</script>
+
+</body>
+</html>
