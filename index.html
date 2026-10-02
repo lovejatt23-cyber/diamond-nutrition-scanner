@@ -94,10 +94,101 @@ let scanner = null;
 let scanning = false;
 let alreadyScanned = false;
 
+// ========================================
+// IMMEDIATE SCAN BEEP
+// ========================================
+
+let audioContext = null;
+
+function prepareSound() {
+
+  try {
+
+    const AudioContext =
+      window.AudioContext ||
+      window.webkitAudioContext;
+
+    if (!AudioContext) return;
+
+    if (!audioContext) {
+      audioContext = new AudioContext();
+    }
+
+    if (audioContext.state === "suspended") {
+      audioContext.resume();
+    }
+
+  } catch (e) {
+    console.log("Audio prepare error:", e);
+  }
+
+}
+
+
+function playScanBeep() {
+
+  try {
+
+    if (!audioContext) return;
+
+    if (audioContext.state === "suspended") {
+      audioContext.resume();
+    }
+
+    const oscillator =
+      audioContext.createOscillator();
+
+    const gain =
+      audioContext.createGain();
+
+    oscillator.connect(gain);
+    gain.connect(audioContext.destination);
+
+    // High clear barcode scanner beep
+    oscillator.type = "sine";
+    oscillator.frequency.setValueAtTime(
+      1000,
+      audioContext.currentTime
+    );
+
+    gain.gain.setValueAtTime(
+      0.25,
+      audioContext.currentTime
+    );
+
+    gain.gain.exponentialRampToValueAtTime(
+      0.01,
+      audioContext.currentTime + 0.12
+    );
+
+    oscillator.start(
+      audioContext.currentTime
+    );
+
+    oscillator.stop(
+      audioContext.currentTime + 0.12
+    );
+
+  } catch (e) {
+
+    console.log("Beep error:", e);
+
+  }
+
+}
+
+
+// ========================================
+// START SCANNER
+// ========================================
 
 function startScanner() {
 
   if (scanning) return;
+
+  // Prepare audio while this is still a
+  // user button click
+  prepareSound();
 
   alreadyScanned = false;
 
@@ -124,27 +215,46 @@ function startScanner() {
 
       alreadyScanned = true;
 
+      // ==================================
+      // 🔊 IMMEDIATE BEEP
+      // ==================================
+
+      playScanBeep();
+
       document.getElementById("status").innerText =
         "✅ Barcode: " + decodedText;
 
+      // Stop scanner
       scanner.stop()
         .then(function() {
 
           scanning = false;
 
-          // Send barcode back to Diamond Nutrition POS
-          window.location.href =
-            POS_URL +
-            "?barcode=" +
-            encodeURIComponent(decodedText);
+          // Small delay so beep is heard
+          setTimeout(function() {
+
+            // Send barcode back to Diamond Nutrition POS
+            window.location.href =
+              POS_URL +
+              "?barcode=" +
+              encodeURIComponent(decodedText);
+
+          }, 180);
 
         })
         .catch(function(error) {
 
-          window.location.href =
-            POS_URL +
-            "?barcode=" +
-            encodeURIComponent(decodedText);
+          // Even if scanner stop has an error,
+          // wait briefly so beep can play
+
+          setTimeout(function() {
+
+            window.location.href =
+              POS_URL +
+              "?barcode=" +
+              encodeURIComponent(decodedText);
+
+          }, 180);
 
         });
 
@@ -173,11 +283,17 @@ function startScanner() {
 }
 
 
+// ========================================
+// STOP SCANNER
+// ========================================
+
 function stopScanner() {
 
   if (!scanner || !scanning) {
+
     document.getElementById("status").innerText =
       "Scanner stopped.";
+
     return;
   }
 
